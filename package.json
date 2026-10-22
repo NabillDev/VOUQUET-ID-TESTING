@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:export-seed": "node scripts/export-seed.mjs",
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio"
   },
