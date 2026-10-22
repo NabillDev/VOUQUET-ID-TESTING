@@ -57,7 +57,7 @@ export function ProductCard({
 
         {/* Sample Badge */}
         {isSample && (
-          <span className="absolute top-2.5 left-2.5 px-2 py-0.5 bg-surfaceStrong/90 border border-border text-[11px] font-bold text-inkMuted rounded-theme">
+          <span className="absolute top-2.5 left-2.5 px-2 py-0.5 bg-surfaceStrong border border-border text-[11px] font-semibold text-ink rounded-theme shadow-xs">
             {copy.common.sampleBadge}
           </span>
         )}

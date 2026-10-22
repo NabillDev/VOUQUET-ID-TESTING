@@ -70,7 +70,7 @@ export default async function HomePage() {
                 sizes="(max-width: 1024px) 100vw, 40vw"
                 className="object-cover"
               />
-              <div className="absolute bottom-3 left-3 right-3 p-3 bg-bg/90 backdrop-blur-sm rounded-theme border border-border/80 flex items-center justify-between">
+              <div className="absolute bottom-3 left-3 right-3 p-3 bg-bg rounded-theme border border-border shadow-sm flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-ink">Buket Mawar Merah</p>
                   <p className="text-[11px] text-inkMuted">Dirangkai segar setiap pagi</p>

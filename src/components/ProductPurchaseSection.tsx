@@ -86,7 +86,7 @@ export function ProductPurchaseSection({ product }: ProductDetailProps) {
           )}
 
           {product.isSample && (
-            <span className="absolute top-3 left-3 px-2.5 py-1 bg-surfaceStrong/90 border border-border text-xs font-bold text-inkMuted rounded-theme">
+            <span className="absolute top-3 left-3 px-2.5 py-1 bg-surfaceStrong border border-border text-xs font-semibold text-ink rounded-theme shadow-xs">
               {copy.common.sampleBadge}
             </span>
           )}
