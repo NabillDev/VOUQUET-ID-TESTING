@@ -1,6 +1,82 @@
+import fs from "fs";
+import path from "path";
+import { execSync } from "child_process";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+// 1. Pastikan file .env ada (salin dari .env.example jika belum ada)
+const rootDir = process.cwd();
+const envPath = path.join(rootDir, ".env");
+const envExamplePath = path.join(rootDir, ".env.example");
+
+if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
+  try {
+    fs.copyFileSync(envExamplePath, envPath);
+    console.log("ℹ️  File .env otomatis dibuat dari .env.example.");
+  } catch (err) {
+    // Abaikan
+  }
+}
+
+// 2. Baca DATABASE_URL dari .env jika belum ada di process.env
+if (!process.env.DATABASE_URL && fs.existsSync(envPath)) {
+  try {
+    const envContent = fs.readFileSync(envPath, "utf-8");
+    for (const line of envContent.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("DATABASE_URL=")) {
+        let val = trimmed.slice("DATABASE_URL=".length).trim();
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        ) {
+          val = val.slice(1, -1);
+        }
+        process.env.DATABASE_URL = val;
+        break;
+      }
+    }
+  } catch (err) {
+    // Abaikan
+  }
+}
+
+// 3. Fallback default DATABASE_URL ke file SQLite lokal jika masih kosong
+const prismaDir = path.join(rootDir, "prisma");
+const devDb = path.join(prismaDir, "dev.db");
+const seedDb = path.join(prismaDir, "seed.sqlite");
+
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = `file:${devDb}`;
+}
+
+// 4. Jika dev.db belum ada tetapi seed.sqlite ada, salin template agar tabel siap
+if (!fs.existsSync(devDb) && fs.existsSync(seedDb)) {
+  try {
+    fs.copyFileSync(seedDb, devDb);
+  } catch (err) {
+    // Abaikan
+  }
+}
+
+// 5. Pastikan skema tabel sudah siap di SQLite jika dev.db belum ada
+try {
+  if (!fs.existsSync(devDb)) {
+    execSync("npx prisma db push --skip-generate", {
+      stdio: "inherit",
+      env: process.env,
+    });
+  }
+} catch (err) {
+  // Abaikan
+}
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+});
 
 const categoriesData = [
   {
