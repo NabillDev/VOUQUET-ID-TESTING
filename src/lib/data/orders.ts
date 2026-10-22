@@ -85,22 +85,32 @@ export async function createOrder(input: OrderCheckoutInput) {
 }
 
 export async function getOrderByCode(code: string) {
-  return prisma.order.findUnique({
-    where: { code },
-    include: {
-      items: true,
-    },
-  });
+  try {
+    return await prisma.order.findUnique({
+      where: { code },
+      include: {
+        items: true,
+      },
+    });
+  } catch (err) {
+    console.warn("Failed to fetch order by code:", err);
+    return null;
+  }
 }
 
 export async function getOrders(status?: string) {
-  return prisma.order.findMany({
-    where: status && status !== "ALL" ? { status } : undefined,
-    include: {
-      items: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  try {
+    return await prisma.order.findMany({
+      where: status && status !== "ALL" ? { status } : undefined,
+      include: {
+        items: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (err) {
+    console.warn("Failed to fetch orders from database:", err);
+    return [];
+  }
 }
 
 export async function updateOrderStatus(id: string, status: string) {
