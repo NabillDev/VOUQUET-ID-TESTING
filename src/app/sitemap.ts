@@ -2,12 +2,11 @@ import { MetadataRoute } from "next";
 import { getSiteConfig } from "@/config/site.config";
 import { getProducts } from "@/lib/data/products";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const config = getSiteConfig();
   const baseUrl = `https://${config.store.domain}`;
-
-  // Fetch all active products
-  const products = await getProducts({ activeOnly: true });
 
   const staticRoutes: MetadataRoute.Sitemap = [
     {
@@ -30,12 +29,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const productRoutes: MetadataRoute.Sitemap = products.map((product) => ({
-    url: `${baseUrl}/shop/${product.slug}`,
-    lastModified: product.updatedAt,
-    changeFrequency: "weekly",
-    priority: 0.8,
-  }));
+  let productRoutes: MetadataRoute.Sitemap = [];
+  try {
+    const products = await getProducts({ activeOnly: true });
+    productRoutes = products.map((product) => ({
+      url: `${baseUrl}/shop/${product.slug}`,
+      lastModified: product.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    }));
+  } catch (error) {
+    // If the database is not ready during build time, fallback to static routes
+    console.warn("Sitemap: unable to query products during build, serving static routes.");
+  }
 
   return [...staticRoutes, ...productRoutes];
 }

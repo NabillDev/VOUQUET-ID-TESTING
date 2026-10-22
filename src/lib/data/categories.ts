@@ -2,14 +2,19 @@ import { prisma } from "@/lib/prisma";
 import type { CategoryInput } from "@/lib/validations";
 
 export async function getCategories() {
-  return prisma.category.findMany({
-    orderBy: { sortOrder: "asc" },
-    include: {
-      _count: {
-        select: { products: true },
+  try {
+    return await prisma.category.findMany({
+      orderBy: { sortOrder: "asc" },
+      include: {
+        _count: {
+          select: { products: true },
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    console.warn("Failed to fetch categories:", err);
+    return [];
+  }
 }
 
 export async function getCategoryBySlug(slug: string) {

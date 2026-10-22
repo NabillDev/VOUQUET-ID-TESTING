@@ -5,11 +5,22 @@ import { getFeaturedProducts, getCategories } from "@/lib/data";
 import { ProductCard } from "@/components/ProductCard";
 import { copy } from "@/config/copy.id";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
-  const [featuredProducts, categories] = await Promise.all([
-    getFeaturedProducts(4),
-    getCategories(),
-  ]);
+  let featuredProducts: any[] = [];
+  let categories: any[] = [];
+
+  try {
+    const [featured, cats] = await Promise.all([
+      getFeaturedProducts(4),
+      getCategories(),
+    ]);
+    featuredProducts = featured;
+    categories = cats;
+  } catch (err) {
+    console.warn("HomePage: unable to query database, rendering fallback.");
+  }
 
   return (
     <div className="space-y-16 sm:space-y-24 py-8 sm:py-12">
