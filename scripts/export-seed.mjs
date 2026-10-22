@@ -118,7 +118,14 @@ main()
 
   const targetPath = path.join(process.cwd(), "prisma", "seed.ts");
   fs.writeFileSync(targetPath, seedContent, "utf8");
-  console.log(`Berhasil mengekspor data ke ${targetPath}!`);
+
+  const sqlitePath = path.join(process.cwd(), "prisma", "seed.sqlite");
+  const devDbPath = path.join(process.cwd(), "prisma", "dev.db");
+  if (fs.existsSync(devDbPath)) {
+    fs.copyFileSync(devDbPath, sqlitePath);
+    console.log(`Berhasil menyinkronkan database template ke ${sqlitePath}!`);
+  }
+
   console.log("Sekarang Anda bisa commit dan push ke GitHub agar Vercel otomatis mengimpor data ini.");
 }
 
