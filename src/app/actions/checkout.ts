@@ -4,10 +4,12 @@ import { orderCheckoutInputSchema } from "@/lib/validations";
 import { createOrder } from "@/lib/data/orders";
 import { getWhatsAppOrderUrl } from "@/lib/whatsapp";
 import { getSiteConfig } from "@/config/site.config";
+import { generateOrderAccessToken } from "@/lib/auth";
 
 export interface CheckoutResult {
   success: boolean;
   orderCode?: string;
+  accessToken?: string;
   whatsappUrl?: string;
   error?: string;
   errors?: Record<string, string>;
@@ -60,12 +62,16 @@ export async function processCheckoutAction(
     // 3. Create Order via Data-Access Layer (re-fetches DB prices and creates snapshots)
     const order = await createOrder(input);
 
-    // 4. Generate WhatsApp handoff URL
+    // 4. Generate high-entropy access token for customer URL
+    const accessToken = generateOrderAccessToken(order.code, order.id);
+
+    // 5. Generate WhatsApp handoff URL
     const whatsappUrl = getWhatsAppOrderUrl(order);
 
     return {
       success: true,
       orderCode: order.code,
+      accessToken,
       whatsappUrl,
     };
   } catch (err: any) {

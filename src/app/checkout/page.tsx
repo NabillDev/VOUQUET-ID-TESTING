@@ -111,15 +111,19 @@ export default function CheckoutPage() {
       clearCart();
 
       // Attempt automatic redirect to WhatsApp, while forwarding to order confirmation
+      const targetUrl = result.accessToken
+        ? `/order/${result.orderCode}?token=${result.accessToken}`
+        : `/order/${result.orderCode}`;
+
       if (result.whatsappUrl && result.orderCode) {
         // Open WhatsApp in current or new window
         window.location.href = result.whatsappUrl;
         // Also fallback navigate to confirmation page
         setTimeout(() => {
-          router.push(`/order/${result.orderCode}`);
+          router.push(targetUrl);
         }, 600);
       } else if (result.orderCode) {
-        router.push(`/order/${result.orderCode}`);
+        router.push(targetUrl);
       }
     });
   };

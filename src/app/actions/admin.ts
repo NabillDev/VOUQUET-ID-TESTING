@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import {
   isAuthenticated,
   setAdminSession,
@@ -26,7 +27,17 @@ import { storage } from "@/lib/storage";
 import { productInputSchema, categoryInputSchema } from "@/lib/validations";
 
 export async function loginAdminAction(password: string) {
-  const rateLimit = checkRateLimit();
+  let clientIp = "127.0.0.1";
+  try {
+    const headerList = headers();
+    const forwardedFor = headerList.get("x-forwarded-for");
+    const realIp = headerList.get("x-real-ip");
+    clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : realIp || "127.0.0.1";
+  } catch {
+    // Fallback if called outside request store
+  }
+
+  const rateLimit = checkRateLimit(clientIp);
   if (!rateLimit.allowed) {
     return {
       success: false,
@@ -36,14 +47,14 @@ export async function loginAdminAction(password: string) {
 
   const isValid = verifyAdminPassword(password);
   if (!isValid) {
-    recordFailedAttempt();
+    recordFailedAttempt(clientIp);
     return {
       success: false,
       error: "Kata sandi yang Anda masukkan salah.",
     };
   }
 
-  resetRateLimit();
+  resetRateLimit(clientIp);
   await setAdminSession();
   return { success: true };
 }

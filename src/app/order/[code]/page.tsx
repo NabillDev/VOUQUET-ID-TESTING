@@ -1,13 +1,18 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, MessageCircle, ArrowLeft, Clock, MapPin } from "lucide-react";
+import { CheckCircle2, MessageCircle, ArrowLeft, ShieldCheck } from "lucide-react";
 import { getOrderByCode } from "@/lib/data/orders";
 import { getWhatsAppOrderUrl } from "@/lib/whatsapp";
 import { copy } from "@/config/copy.id";
+import { isAuthenticated, verifyOrderAccessToken } from "@/lib/auth";
+import { OrderVerificationForm } from "@/components/OrderVerificationForm";
 
 interface OrderConfirmationPageProps {
   params: {
     code: string;
+  };
+  searchParams: {
+    token?: string;
   };
 }
 
@@ -15,14 +20,29 @@ export const metadata = {
   title: "Konfirmasi Pesanan",
 };
 
+function maskPhone(phone: string): string {
+  const clean = phone.replace(/\D/g, "");
+  if (clean.length < 8) return "08***";
+  return clean.slice(0, 4) + "-****-" + clean.slice(-4);
+}
+
 export default async function OrderConfirmationPage({
   params,
+  searchParams,
 }: OrderConfirmationPageProps) {
   const order = await getOrderByCode(params.code);
 
   if (!order) {
     notFound();
   }
+
+  const isAdmin = await isAuthenticated();
+  const isTokenValid = verifyOrderAccessToken(
+    order.code,
+    order.id,
+    searchParams.token
+  );
+  const isAuthorized = isAdmin || isTokenValid;
 
   const whatsappUrl = getWhatsAppOrderUrl(order);
 
@@ -46,7 +66,7 @@ export default async function OrderConfirmationPage({
       {/* Success Badge & Header */}
       <div className="text-center space-y-3">
         <div className="w-16 h-16 mx-auto rounded-full bg-surfaceStrong border border-border flex items-center justify-center text-primary">
-          <CheckCircle2 className="w-8 h-8" />
+          <CheckCircle2 className="w-8 h-8" aria-hidden="true" />
         </div>
         <h1 className="font-display font-bold text-2xl sm:text-3xl text-ink">
           {copy.orderConfirmation.title}
@@ -55,6 +75,9 @@ export default async function OrderConfirmationPage({
           {copy.orderConfirmation.subtitle}
         </p>
       </div>
+
+      {/* Verification Widget if accessed without valid token */}
+      {!isAuthorized && <OrderVerificationForm orderCode={order.code} />}
 
       {/* Main Order Details Card */}
       <div className="bg-surface border border-border rounded-theme p-6 sm:p-8 space-y-6">
@@ -68,26 +91,36 @@ export default async function OrderConfirmationPage({
               {order.code}
             </span>
           </div>
-          <div className="px-3 py-1 bg-surfaceStrong border border-border rounded-full text-xs font-semibold text-ink">
-            {statusLabels[order.status] || order.status}
+          <div className="flex items-center gap-2">
+            {isAuthorized && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-surfaceStrong border border-border rounded-full text-[11px] font-semibold text-primary">
+                <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Terverifikasi</span>
+              </span>
+            )}
+            <div className="px-3 py-1 bg-surfaceStrong border border-border rounded-full text-xs font-semibold text-ink">
+              {statusLabels[order.status] || order.status}
+            </div>
           </div>
         </div>
 
-        {/* WhatsApp Reopen Button */}
-        <div className="space-y-2">
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 bg-primary text-onPrimary font-semibold text-sm rounded-theme hover:bg-primaryHover transition-all min-h-[44px] shadow-sm"
-          >
-            <MessageCircle className="w-5 h-5" />
-            <span>{copy.orderConfirmation.reopenWhatsapp}</span>
-          </a>
-          <p className="text-[11px] text-inkMuted text-center">
-            Klik tombol di atas jika pesan WhatsApp belum terbuka secara otomatis.
-          </p>
-        </div>
+        {/* WhatsApp Reopen Button (shown when authorized) */}
+        {isAuthorized && (
+          <div className="space-y-2">
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 bg-primary text-onPrimary font-semibold text-sm rounded-theme hover:bg-primaryHover transition-all min-h-[44px] shadow-sm"
+            >
+              <MessageCircle className="w-5 h-5" aria-hidden="true" />
+              <span>{copy.orderConfirmation.reopenWhatsapp}</span>
+            </a>
+            <p className="text-[11px] text-inkMuted text-center">
+              Klik tombol di atas jika pesan WhatsApp belum terbuka secara otomatis.
+            </p>
+          </div>
+        )}
 
         {/* Items List */}
         <div className="space-y-3 pt-4 border-t border-border">
@@ -116,25 +149,53 @@ export default async function OrderConfirmationPage({
 
         {/* Delivery Details */}
         <div className="space-y-3 pt-2 text-xs text-ink">
-          <h2 className="font-display font-semibold text-sm text-ink">
-            {copy.orderConfirmation.deliveryDetails}
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display font-semibold text-sm text-ink">
+              {copy.orderConfirmation.deliveryDetails}
+            </h2>
+            {!isAuthorized && (
+              <span className="text-[11px] font-semibold text-primary">
+                Sebagian data disamarkan
+              </span>
+            )}
+          </div>
+
           <div className="space-y-2 bg-bg border border-border rounded-theme p-4">
             <p>
-              <strong className="text-inkMuted">Penerima:</strong> {order.recipientName} ({order.recipientPhone})
+              <strong className="text-inkMuted">Penerima:</strong>{" "}
+              {order.recipientName}{" "}
+              <span className="text-inkMuted">
+                ({isAuthorized ? order.recipientPhone : maskPhone(order.recipientPhone)})
+              </span>
             </p>
             <p>
-              <strong className="text-inkMuted">Waktu Pengiriman:</strong> {formattedDate} ({order.deliverySlot} WIB)
+              <strong className="text-inkMuted">Waktu Pengiriman:</strong>{" "}
+              {formattedDate} ({order.deliverySlot} WIB)
             </p>
             <p>
-              <strong className="text-inkMuted">Alamat:</strong> {order.address} ({order.area})
+              <strong className="text-inkMuted">Alamat:</strong>{" "}
+              {isAuthorized ? (
+                `${order.address} (${order.area})`
+              ) : (
+                <span className="italic text-inkMuted">
+                  Alamat lengkap disamarkan ({order.area})
+                </span>
+              )}
             </p>
-            {order.cardMessage && (
-              <p className="pt-2 border-t border-border">
-                <strong className="text-inkMuted">Kartu Ucapan:</strong> &ldquo;{order.cardMessage}&rdquo;
+
+            {isAuthorized ? (
+              order.cardMessage && (
+                <p className="pt-2 border-t border-border">
+                  <strong className="text-inkMuted">Kartu Ucapan:</strong> &ldquo;{order.cardMessage}&rdquo;
+                </p>
+              )
+            ) : (
+              <p className="pt-2 border-t border-border text-inkMuted italic">
+                Pesan kartu ucapan dirahasiakan demi privasi pemesan.
               </p>
             )}
-            {order.notes && (
+
+            {isAuthorized && order.notes && (
               <p className="pt-2 border-t border-border">
                 <strong className="text-inkMuted">Catatan Khusus:</strong> {order.notes}
               </p>
@@ -168,9 +229,9 @@ export default async function OrderConfirmationPage({
       <div className="text-center pt-2">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-inkMuted hover:text-primary transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-inkMuted hover:text-primary transition-colors min-h-[44px] px-3"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
           <span>{copy.orderConfirmation.backHome}</span>
         </Link>
       </div>
